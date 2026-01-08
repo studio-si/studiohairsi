@@ -25,6 +25,7 @@ export interface Appointment {
   servicoNome?: string; // Campo auxiliar para exibição rápida
   dataAgendamento: string; // YYYY-MM-DD
   horaAgendamento: string; // HH:MM
+  horaFinal: string; // HH:MM (Calculado: inicio + duração)
   valorAgendamento: number;
   status: 'Aguardando confirmação' | 'Confirmado' | 'Concluído' | 'Não compareceu' | 'Cancelado';
   observacao: string;
