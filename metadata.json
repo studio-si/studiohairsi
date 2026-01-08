@@ -1,0 +1,7 @@
+{
+  "name": "Studio Hair Simone - Admin",
+  "description": "Aplicativo elegante para gestão de salão de beleza, com controle de clientes, serviços, agendamentos e análise financeira.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
