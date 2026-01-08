@@ -10,10 +10,12 @@ export interface Client {
 
 export interface Service {
   id?: string;
-  name: string;
-  price: number;
-  durationMinutes: number;
-  color?: string;
+  displayName: string;
+  descricao: string;
+  duracao: number;
+  valorServico: number;
+  status: boolean;
+  createdAt: number;
 }
 
 export interface Appointment {

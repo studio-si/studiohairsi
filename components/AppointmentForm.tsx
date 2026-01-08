@@ -25,7 +25,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialDate, onSucces
     const unsubClients = onSnapshot(collection(db, 'clients'), (snap) => {
       setClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
     });
-    const unsubServices = onSnapshot(collection(db, 'services'), (snap) => {
+    // Fix: Changed collection name from 'services' to 'servicos' to match the database structure
+    const unsubServices = onSnapshot(collection(db, 'servicos'), (snap) => {
       setServices(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
     });
     return () => { unsubClients(); unsubServices(); };
@@ -39,16 +40,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialDate, onSucces
     if (!client || !service) return;
 
     try {
+      // Fix: Updated service.name to service.displayName and service.price to service.valorServico
       const apptData: Appointment = {
         clientId: client.id!,
         clientName: client.name,
         serviceId: service.id!,
-        serviceName: service.name,
+        serviceName: service.displayName,
         date: formData.date,
         startTime: formData.time,
         endTime: '',
         status: 'scheduled',
-        totalPrice: service.price
+        totalPrice: service.valorServico
       };
 
       const docRef = await addDoc(collection(db, 'appointments'), apptData);
@@ -60,7 +62,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialDate, onSucces
       await NotificationService.scheduleAppointmentNotification(
         docRef.id,
         client.name,
-        service.name,
+        service.displayName,
         apptDateTime
       );
 
@@ -93,7 +95,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ initialDate, onSucces
           onChange={e => setFormData({...formData, serviceId: e.target.value})}
         >
           <option value="">Selecionar Serviço</option>
-          {services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price}</option>)}
+          {/* Fix: Updated s.name to s.displayName and s.price to s.valorServico to match Service type */}
+          {services.map(s => <option key={s.id} value={s.id}>{s.displayName} - R$ {s.valorServico}</option>)}
         </select>
       </div>
       <div className="flex gap-4">

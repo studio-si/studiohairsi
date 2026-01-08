@@ -1,7 +1,8 @@
+
 // Modular Firebase v9+ configuration for hair salon app
-// Fixed: Using double quotes for module imports to resolve potential environment resolution issues
+// Fix: Importing initializeApp correctly from the firebase/app submodule
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCLX9AolA0lByIMrtZ1Lb5nP76sTW-8y2Q",

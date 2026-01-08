@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { CalendarOff, Plus, Trash2, Loader2, Info, AlertCircle, X } from 'lucide-react';
+import { CalendarOff, Plus, Trash2, Loader2, AlertCircle, X } from 'lucide-react';
 import { doc, onSnapshot, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '../../firebase';
 import ModalWidget from '../ModalWidget';
@@ -11,7 +11,7 @@ interface HolidayData {
   motivo: string;
 }
 
-interface HolidayMap {
+interface HolidayDocData {
   [key: string]: HolidayData;
 }
 
@@ -26,13 +26,15 @@ const DaysOffWidget: React.FC = () => {
 
   const THINKING_AVATAR = "https://i.ibb.co/KjNQjfHy/avatar-Pensando.png";
 
-  // Carrega os dados do Firebase
-  // Estrutura solicitada: configuracoes (col) / holiday (doc) / dayOff (map)
+  // Monitora o documento: configuracoes (col) / holiday (doc)
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'configuracoes', 'holiday'), (docSnap) => {
       if (docSnap.exists()) {
-        const fullData = docSnap.data() as HolidayMap || {};
-        const list = Object.values(fullData).sort((a, b) => a.diaFolga.localeCompare(b.diaFolga));
+        const data = docSnap.data() as HolidayDocData;
+        // Filtra chaves que podem não ser feriados (metadados) e ordena por data
+        const list = Object.values(data)
+          .filter(h => h && h.diaFolga)
+          .sort((a, b) => a.diaFolga.localeCompare(b.diaFolga));
         setHolidays(list);
       } else {
         setHolidays([]);
@@ -49,12 +51,12 @@ const DaysOffWidget: React.FC = () => {
     setSaving(true);
     try {
       const holidayKey = newHoliday.diaFolga;
-      // Salva exatamente no formato: configuracoes/holiday -> dayOff (map)
+      // Salva exatamente na estrutura: configuracoes/holiday -> [chave_data]: {diaFolga, ativo, motivo}
       await setDoc(doc(db, 'configuracoes', 'holiday'), {
-          [holidayKey]: {
-            diaFolga: newHoliday.diaFolga,
-            motivo: newHoliday.motivo,
-            ativo: true // Inicial como solicitado
+        [holidayKey]: {
+          diaFolga: newHoliday.diaFolga,
+          motivo: newHoliday.motivo,
+          ativo: true // Inicial como true conforme solicitado
         }
       }, { merge: true });
 
@@ -73,7 +75,7 @@ const DaysOffWidget: React.FC = () => {
         [`${dateKey}.ativo`]: !currentStatus
       });
     } catch (err) {
-      console.error("Erro ao alternar status da folga:", err);
+      console.error("Erro ao alternar status:", err);
     }
   };
 
@@ -86,12 +88,12 @@ const DaysOffWidget: React.FC = () => {
     if (!holidayToManage) return;
     try {
       await updateDoc(doc(db, 'configuracoes', 'holiday'), {
-        [`${holidayToManage}`]: deleteField()
+        [holidayToManage]: deleteField()
       });
       setIsConfirmModalOpen(false);
       setHolidayToManage(null);
     } catch (err) {
-      console.error("Erro ao deletar folga:", err);
+      console.error("Erro ao deletar:", err);
     }
   };
 
@@ -104,7 +106,7 @@ const DaysOffWidget: React.FC = () => {
       setIsConfirmModalOpen(false);
       setHolidayToManage(null);
     } catch (err) {
-      console.error("Erro ao desativar folga:", err);
+      console.error("Erro ao desativar:", err);
     }
   };
 
@@ -134,7 +136,7 @@ const DaysOffWidget: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2">
+      <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
         {holidays.length > 0 ? (
           holidays.map((holiday) => (
             <div 
@@ -233,7 +235,7 @@ const DaysOffWidget: React.FC = () => {
         </form>
       </ModalWidget>
 
-      {/* Modal de Confirmação de Exclusão - MUITO COMPACTO E FORA DO CLIPPING */}
+      {/* Modal de Confirmação de Exclusão Compacto */}
       {isConfirmModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
           <div className="bg-white w-full max-w-[300px] rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in duration-300 relative">
