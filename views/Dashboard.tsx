@@ -1,128 +1,243 @@
+
 import React, { useState, useEffect } from 'react';
-import { Calendar, UserCheck, DollarSign, ArrowRight } from 'lucide-react';
-// Follow strictly the spacing and import rules for Google GenAI
+import { 
+  Calendar, 
+  UserCheck, 
+  DollarSign, 
+  ArrowRight, 
+  Clock, 
+  Scissors, 
+  Loader2,
+  Sparkles
+} from 'lucide-react';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
+import { Appointment, Client, Service } from '../types';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 interface Props {
   onNavigate: (view: 'dashboard' | 'clients' | 'services' | 'schedule' | 'finance' | 'settings') => void;
 }
 
-const DashboardView: React.FC<Props> = ({ onNavigate }) => {
-  const [tip, setTip] = useState<string>("Buscando dica estratégica do dia...");
+const DEFAULT_CLIENT_PHOTO = "https://i.ibb.co/HpCqCTGw/cliente.png";
 
-  // Leverage Gemini API to provide dynamic management advice for the business owner
+const DashboardView: React.FC<Props> = ({ onNavigate }) => {
+  const [tip, setTip] = useState<string>("Buscando sua motivação do dia...");
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [clientsCount, setClientsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [allClients, setAllClients] = useState<Client[]>([]);
+  const [allServices, setAllServices] = useState<Service[]>([]);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const currentTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+
   useEffect(() => {
+    // 1. Escutar Agendamentos de Hoje
+    const qAppts = query(collection(db, 'appointments'), where('dataAgendamento', '==', todayStr));
+    const unsubAppts = onSnapshot(qAppts, (snap) => {
+      setAppointments(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment)));
+      setLoading(false);
+    });
+
+    // 2. Escutar Total de Clientes
+    const unsubClientsCount = onSnapshot(collection(db, 'clients'), (snap) => {
+      setClientsCount(snap.size);
+      setAllClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
+    });
+
+    // 3. Escutar Serviços (para nomes na lista)
+    const unsubServices = onSnapshot(collection(db, 'servicos'), (snap) => {
+      setAllServices(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service)));
+    });
+
+    // 4. Buscar Frase do Dia via Gemini
     const fetchAITip = async () => {
       try {
-        // Create a new GoogleGenAI instance right before making an API call to ensure current key
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        // Use gemini-3-flash-preview for basic text tasks (Summarization, proofreading, simple Q&A)
         const response: GenerateContentResponse = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: 'Como especialista em gestão de salões de beleza, dê uma dica curta (máximo 15 palavras) e inspiradora para Simone, dona do salão Studio Hair. Fale sobre fidelização de clientes ou excelência no serviço.',
+          contents: 'Você é um mentor de sucesso para cabeleireiras. Escreva uma frase motivacional curta (máximo 12 palavras) para Simone, dona do salão Studio Hair, para inspirar o dia de trabalho dela. Use um tom elegante e acolhedor.',
         });
-
-        // Use the .text property getter to extract the response string (do not call as a function)
-        const generatedText = response.text;
-        if (generatedText) {
-          setTip(generatedText.trim());
-        }
+        if (response.text) setTip(response.text.trim());
       } catch (error) {
-        console.error("Failed to generate AI tip:", error);
-        // Fallback to static tip if API fails
-        setTip("Um atendimento personalizado cria fidelidade eterna. Lembre-se de ouvir os desejos das suas clientes.");
+        setTip("Sua arte transforma vidas. Brilhe hoje, Simone!");
       }
     };
 
     fetchAITip();
-  }, []);
 
-  const stats = [
-    { label: 'Hoje', value: '8', icon: Calendar, color: 'bg-pink-50 text-pink-600', border: 'border-pink-100' },
-    { label: 'Clientes', value: '142', icon: UserCheck, color: 'bg-rose-50 text-rose-600', border: 'border-rose-100' },
-    { label: 'Ganhos', value: 'R$ 840', icon: DollarSign, color: 'bg-indigo-50 text-indigo-600', border: 'border-indigo-100' },
-  ];
+    return () => { unsubAppts(); unsubClientsCount(); unsubServices(); };
+  }, [todayStr]);
+
+  // Cálculos de Métricas
+  const todayAppts = appointments.length;
+  const todayRevenue = appointments
+    .filter(a => a.status === 'Confirmado' || a.status === 'Concluído')
+    .reduce((acc, curr) => acc + curr.valorAgendamento, 0);
+
+  // Próximos agendamentos (Hoje e que ainda vão acontecer)
+  const upcomingAppts = appointments
+    .filter(a => a.horaAgendamento >= currentTimeStr && a.status !== 'Cancelado')
+    .sort((a, b) => a.horaAgendamento.localeCompare(b.horaAgendamento));
+
+  const pendingCount = appointments.filter(a => a.status === 'Aguardando confirmação').length;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 space-y-4">
+        <Loader2 className="text-rose-400 animate-spin" size={40} />
+        <p className="text-rose-300 font-serif italic">Preparando seu Studio...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      
       {/* Welcome Card */}
-      <div className="bg-gradient-to-br from-rose-400 via-rose-500 to-pink-600 p-8 md:p-12 rounded-[2.5rem] text-white shadow-2xl shadow-rose-200/50 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="text-center md:text-left">
-          <h2 className="text-2xl md:text-4xl font-serif mb-2">Olá, Simone Oliveira!</h2>
-          <p className="text-white/80 text-sm md:text-lg mb-6 max-w-md">Seu studio está bombando! Você tem 3 agendamentos pendentes para as próximas horas.</p>
+      <div className="bg-gradient-to-br from-rose-400 via-rose-500 to-pink-600 p-8 md:p-12 rounded-[2.5rem] text-white shadow-2xl shadow-rose-200/50 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
+          <Scissors size={200} />
+        </div>
+        
+        <div className="text-center md:text-left z-10">
+          <h2 className="text-3xl md:text-5xl font-serif mb-3 italic">Olá, Simone!</h2>
+          <p className="text-white/90 text-sm md:text-lg mb-8 max-w-md leading-relaxed">
+            Seu studio está bombando! Você tem <span className="font-black underline">{pendingCount}</span> {pendingCount === 1 ? 'agendamento pendente' : 'agendamentos pendentes'} para as próximas horas.
+          </p>
           <button 
             onClick={() => onNavigate('schedule')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-6 py-3 rounded-2xl text-sm font-bold flex items-center gap-3 transition-all inline-flex shadow-inner"
+            className="bg-white text-rose-500 hover:bg-rose-50 px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 transition-all inline-flex shadow-xl active:scale-95"
           >
             Acessar Agenda Completa <ArrowRight size={18} />
           </button>
         </div>
-        <div className="hidden lg:block w-48 h-48 bg-white/10 rounded-full border-8 border-white/5 animate-pulse"></div>
+        
+        <div className="hidden lg:block w-40 h-40 bg-white/20 rounded-[3rem] border-8 border-white/5 animate-pulse rotate-12"></div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Stats & Quick Actions */}
+        {/* Left Column: Stats & Motivation */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4 md:gap-6">
-            {stats.map((stat, i) => (
-              <div key={i} className={`bg-white/80 backdrop-blur-sm p-6 rounded-[2rem] border ${stat.border} flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:-translate-y-1`}>
-                <div className={`p-4 rounded-2xl ${stat.color} mb-4`}>
-                  <stat.icon size={24} />
-                </div>
-                <span className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest">{stat.label}</span>
-                <span className="text-xl md:text-3xl font-bold text-slate-800 mt-1">{stat.value}</span>
-              </div>
-            ))}
+          
+          {/* Stats Grid Real-time */}
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard 
+              label="Hoje" 
+              value={todayAppts.toString()} 
+              icon={Calendar} 
+              color="bg-pink-50 text-pink-600" 
+              border="border-pink-100" 
+            />
+            <StatCard 
+              label="Clientes" 
+              value={clientsCount.toString()} 
+              icon={UserCheck} 
+              color="bg-rose-50 text-rose-600" 
+              border="border-rose-100" 
+            />
+            <StatCard 
+              label="Ganhos" 
+              value={`R$ ${todayRevenue}`} 
+              icon={DollarSign} 
+              color="bg-emerald-50 text-emerald-600" 
+              border="border-emerald-100" 
+            />
           </div>
 
-          {/* Tips / Promotion Section - Powered by Gemini */}
-          <div className="hidden md:block bg-white/40 border border-white p-8 rounded-[2.5rem] backdrop-blur-md shadow-sm relative overflow-hidden">
-             <div className="absolute -right-10 -top-10 w-40 h-40 bg-pink-100/30 rounded-full blur-3xl"></div>
-             <h4 className="text-xs font-bold text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-               <span className="w-6 h-0.5 bg-rose-200"></span> Insight Studio AI
+          {/* Frase do Dia - Powered by Gemini */}
+          <div className="bg-white/60 border border-white p-8 rounded-[2.5rem] backdrop-blur-md shadow-sm relative overflow-hidden group">
+             <div className="absolute -right-6 -top-6 w-32 h-32 bg-rose-100/30 rounded-full blur-3xl group-hover:bg-rose-200/40 transition-colors"></div>
+             <h4 className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
+               <Sparkles size={14} /> Frase do dia
              </h4>
-             <p className="text-lg text-slate-600 font-serif italic leading-relaxed">
+             <p className="text-xl md:text-2xl text-slate-700 font-serif italic leading-relaxed">
                "{tip}"
              </p>
           </div>
         </div>
 
-        {/* Right Column: Today's Appointments */}
+        {/* Right Column: Next of the Day */}
         <div className="space-y-6">
-          <div className="flex justify-between items-end px-1">
-            <h3 className="text-xl font-serif text-slate-700">Próximos do Dia</h3>
-            <button className="text-xs text-rose-500 font-bold hover:underline" onClick={() => onNavigate('schedule')}>Ver todos</button>
+          <div className="flex justify-between items-end px-2">
+            <div>
+              <h3 className="text-xl font-serif font-bold text-slate-800">Próximos do Dia</h3>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Fila de Atendimento</p>
+            </div>
+            <button 
+              className="text-[10px] text-rose-500 font-black uppercase tracking-widest hover:underline" 
+              onClick={() => onNavigate('schedule')}
+            >
+              Ver todos
+            </button>
           </div>
           
-          <div className="space-y-4">
-            {[
-              { time: '14:30', client: 'Ana Paula', service: 'Mechas + Hidratação', price: 280 },
-              { time: '16:00', client: 'Beatriz Silva', service: 'Corte Bordado', price: 120 },
-              { time: '17:30', client: 'Carla Lima', service: 'Escova Modelada', price: 80 },
-              { time: '19:00', client: 'Debora Souza', service: 'Pintura Completa', price: 210 },
-            ].map((item, i) => (
-              <div key={i} className="bg-white/90 backdrop-blur-sm p-5 rounded-[2rem] border border-pink-50 flex items-center justify-between shadow-sm hover:shadow-xl transition-all cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="bg-pink-50 text-rose-500 text-xs font-black w-12 h-12 rounded-2xl flex items-center justify-center group-hover:bg-rose-500 group-hover:text-white transition-colors shadow-sm">
-                    {item.time}
+          <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+            {upcomingAppts.length > 0 ? (
+              upcomingAppts.map((appt) => {
+                const client = allClients.find(c => c.id === appt.clienteId);
+                const service = allServices.find(s => s.id === appt.servicoId);
+                
+                return (
+                  <div 
+                    key={appt.id} 
+                    className="bg-white/90 backdrop-blur-sm p-4 rounded-[2rem] border border-pink-50 flex items-center justify-between shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group"
+                    onClick={() => onNavigate('schedule')}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-pink-100 overflow-hidden shrink-0 shadow-inner">
+                          <img 
+                            src={client?.fotoUrl || DEFAULT_CLIENT_PHOTO} 
+                            className="w-full h-full object-cover" 
+                            alt={client?.displayName}
+                            onError={(e) => (e.currentTarget.src = DEFAULT_CLIENT_PHOTO)}
+                          />
+                        </div>
+                        <div className="absolute -top-2 -left-2 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
+                          {appt.horaAgendamento}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 group-hover:text-rose-500 transition-colors line-clamp-1">
+                          {client?.displayName || 'Cliente'}
+                        </h4>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-1">
+                          <Scissors size={10} className="text-rose-300" /> {service?.displayName || 'Serviço'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full">
+                        R$ {appt.valorAgendamento}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">{item.client}</h4>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{item.service}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-black text-rose-500">R$ {item.price}</span>
-                </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 bg-white/40 rounded-[2rem] border border-dashed border-rose-100">
+                <Clock className="mx-auto text-rose-200 mb-2" size={32} />
+                <p className="text-xs text-slate-400 font-serif italic">Nenhum atendimento<br/>restante para hoje.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+// Subcomponente de Card de Estatística
+const StatCard = ({ label, value, icon: Icon, color, border }: any) => (
+  <div className={`bg-white/80 backdrop-blur-sm p-6 rounded-[2.2rem] border ${border} flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all hover:-translate-y-1`}>
+    <div className={`p-4 rounded-2xl ${color} mb-3 shadow-inner`}>
+      <Icon size={22} />
+    </div>
+    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{label}</span>
+    <span className="text-xl md:text-2xl font-black text-slate-800 mt-1 tracking-tight">{value}</span>
+  </div>
+);
 
 export default DashboardView;

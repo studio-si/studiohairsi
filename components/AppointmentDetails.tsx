@@ -15,7 +15,6 @@ import {
   AlertCircle,
   Clock3,
   Loader2,
-  Share2,
   ChevronRight,
   Edit3
 } from 'lucide-react';
@@ -55,6 +54,12 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, on
     }
   };
 
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   const statusOptions: { label: Appointment['status']; icon: any; color: string; desc: string }[] = [
     { label: 'Aguardando confirmação', icon: Clock3, color: 'text-slate-400', desc: 'Cliente ainda não confirmou o horário' },
     { label: 'Confirmado', icon: CheckCircle2, color: 'text-blue-500', desc: 'Horário garantido na agenda' },
@@ -64,7 +69,7 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, on
   ];
 
   const whatsappUrl = client?.telefone 
-    ? `https://wa.me/55${client.telefone.replace(/\D/g, '')}?text=Olá ${client.displayName}, estou entrando em contato do Studio Hair Simone sobre seu agendamento de ${service?.displayName} no dia ${new Date(appointment.dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')} às ${appointment.horaAgendamento}.`
+    ? `https://wa.me/55${client.telefone.replace(/\D/g, '')}?text=Olá ${client.displayName}, estou entrando em contato do Studio Hair Simone sobre seu agendamento de ${service?.displayName} no dia ${formatDateBR(appointment.dataAgendamento)} às ${appointment.horaAgendamento}.`
     : '#';
 
   return (
@@ -98,8 +103,8 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, on
         </div>
       </div>
 
-      {/* AÇÕES RÁPIDAS */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* AÇÕES RÁPIDAS (Agora em 2 colunas após remoção do Ticket) */}
+      <div className="grid grid-cols-2 gap-3">
         <a 
           href={whatsappUrl} 
           target="_blank" 
@@ -120,16 +125,6 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, on
             <Edit3 size={18} />
           </div>
           <span className="text-[8px] font-black text-rose-600 uppercase tracking-widest">Editar</span>
-        </button>
-
-        <button 
-          onClick={() => alert("Comprovante gerado com sucesso!")}
-          className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-[2rem] border border-blue-100 group active:scale-95 transition-all"
-        >
-          <div className="w-10 h-10 bg-blue-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 mb-2 group-hover:scale-110 transition-transform">
-            <Share2 size={18} />
-          </div>
-          <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Ticket</span>
         </button>
       </div>
 
@@ -157,7 +152,7 @@ const AppointmentDetails: React.FC<AppointmentDetailsProps> = ({ appointment, on
               </div>
               <div>
                 <p className="text-[9px] text-slate-400 font-black uppercase">Data</p>
-                <p className="text-sm font-bold text-slate-700">{new Date(appointment.dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                <p className="text-sm font-bold text-slate-700">{formatDateBR(appointment.dataAgendamento)}</p>
               </div>
             </div>
             <div className="p-6 flex items-center gap-4">
