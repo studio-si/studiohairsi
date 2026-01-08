@@ -4,6 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Studio Hair Simone</title>
@@ -39,15 +40,27 @@
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.5);
       }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
       .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
+        width: 5px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
+        background: rgba(254, 205, 211, 0.1);
+        border-radius: 10px;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #fecdd3;
+        background: rgba(244, 63, 94, 0.2);
         border-radius: 10px;
+        border: 1px solid transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(244, 63, 94, 0.4);
       }
     </style>
     <script type="importmap">
@@ -67,7 +80,6 @@
   </head>
   <body class="text-slate-800 app-background">
     <div id="root" class="h-full w-full"></div>
-    <!-- Script de entrada para funcionamento na Vercel -->
     <script type="module" src="index.tsx"></script>
   </body>
 </html>

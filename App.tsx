@@ -33,7 +33,6 @@ const App: React.FC = () => {
   useEffect(() => {
     NotificationService.requestPermissions();
 
-    // Busca o logo dinamicamente do Firebase
     const unsubLogo = onSnapshot(doc(db, 'configuracoes', 'infoSalao'), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -89,7 +88,6 @@ const App: React.FC = () => {
       >
         <div className="p-8 flex items-center justify-between border-b border-pink-100/30">
           <div className="flex items-center gap-4">
-            {/* Logo do Firebase com tratamento de fallback */}
             <div className="w-12 h-12 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-pink-50 overflow-hidden">
               {logoUrl ? (
                 <img src={logoUrl} alt="Studio Hair" className="w-full h-full object-cover" onError={() => setLogoUrl(null)} />
@@ -110,7 +108,8 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+        {/* Navegação com scrollbar estilizada */}
+        <nav className="flex-1 p-6 space-y-2 overflow-y-auto custom-scrollbar">
           {menuItems.map((item) => (
             <button 
               key={item.type}

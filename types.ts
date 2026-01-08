@@ -1,10 +1,9 @@
 
 export interface Client {
   id?: string;
-  name: string;
-  phone: string;
-  email?: string;
-  notes?: string;
+  displayName: string;
+  telefone: string;
+  fotoUrl: string;
   createdAt: number;
 }
 
@@ -20,15 +19,16 @@ export interface Service {
 
 export interface Appointment {
   id?: string;
-  clientId: string;
-  clientName: string;
-  serviceId: string;
-  serviceName: string;
-  date: string; // ISO String
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
-  status: 'scheduled' | 'completed' | 'cancelled';
-  totalPrice: number;
+  clienteId: string;
+  clienteNome?: string; // Campo auxiliar para exibição rápida
+  servicoId: string;
+  servicoNome?: string; // Campo auxiliar para exibição rápida
+  dataAgendamento: string; // YYYY-MM-DD
+  horaAgendamento: string; // HH:MM
+  valorAgendamento: number;
+  status: 'Aguardando confirmação' | 'Confirmado' | 'Concluído' | 'Não compareceu' | 'Cancelado';
+  observacao: string;
+  createdAt: number;
 }
 
 export interface BusinessHours {
