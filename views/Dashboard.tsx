@@ -54,14 +54,33 @@ const DashboardView: React.FC<Props> = ({ onNavigate }) => {
     // 4. Buscar Frase do Dia via Gemini
     const fetchAITip = async () => {
       try {
+        // Garantimos que a chave de API esteja presente. Em alguns builds móveis, process.env pode se comportar de forma instável
+        if (!process.env.API_KEY) {
+          throw new Error("API_KEY não configurada");
+        }
+
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response: GenerateContentResponse = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
           contents: 'Você é um mentor de sucesso para cabeleireiras. Escreva uma frase motivacional curta (máximo 12 palavras) para Simone, dona do salão Studio Hair, para inspirar o dia de trabalho dela. Use um tom elegante e acolhedor.',
         });
-        if (response.text) setTip(response.text.trim());
+
+        if (response && response.text) {
+          setTip(response.text.trim());
+        } else {
+          throw new Error("Resposta vazia da IA");
+        }
       } catch (error) {
-        setTip("Sua arte transforma vidas. Brilhe hoje, Simone!");
+        console.error("Erro ao buscar frase via IA:", error);
+        // Fallbacks elegantes em caso de falha de conexão ou API no mobile
+        const fallbacks = [
+          "Sua arte transforma vidas. Brilhe hoje, Simone!",
+          "O Studio Hair é o palco do seu sucesso. Mãos à obra!",
+          "Cada cliente é uma oportunidade de espalhar beleza.",
+          "Excelência é o seu padrão. Tenha um dia maravilhoso!",
+          "Simone, seu talento é o que faz o Studio Hair ser único."
+        ];
+        setTip(fallbacks[Math.floor(Math.random() * fallbacks.length)]);
       }
     };
 
@@ -79,7 +98,7 @@ const DashboardView: React.FC<Props> = ({ onNavigate }) => {
   // Próximos agendamentos (Hoje e que ainda vão acontecer)
   const upcomingAppts = appointments
     .filter(a => a.horaAgendamento >= currentTimeStr && a.status !== 'Cancelado')
-    .sort((a, b) => a.horaAgendamento.localeCompare(b.horaAgendamento));
+    .sort((a, b) => a.horaAgendamento.compare(b.horaAgendamento));
 
   const pendingCount = appointments.filter(a => a.status === 'Aguardando confirmação').length;
 
